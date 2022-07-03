@@ -1,22 +1,22 @@
-var express = require("express");
+var express = require("express");             
 var app = express();
 var mysql = require("mysql");
 var bodyParser = require("body-parser");
 var session = require("express-session");
 
-var connection = mysql.createConnection({
+var connection = mysql.createConnection({          // konekcija prema bazi
   host: "localhost",
   user: "root",
   password: "",
   database: "airline"
 });
 
-connection.connect(function(err) {
+connection.connect(function(err) {                // ako je konekcija neuspjesna javlja se greska, u suprotnom konzologuje se Connected to MYSQL!
   if (err) throw err;
   console.log("Connected to MYSQL!");
 });
 
-app.use(express.static("assets"));
+app.use(express.static("assets"));                 // importovanje assets, css, js, ejs
 app.use(express.static("css"));
 app.use(express.static("js"));
 app.set("view engine", "ejs");
@@ -25,7 +25,7 @@ app.use(
   session({ secret: "dbmsProject", resave: false, saveUninitialized: false })
 );
 
-app.get("/", function(req, res) {
+app.get("/", function(req, res) {                   // rutiranje na home page
   if (req.session.email) {
     res.redirect("/home");
   } else {
@@ -33,7 +33,7 @@ app.get("/", function(req, res) {
   }
 });
 
-app.get("/login", function(req, res) {
+app.get("/login", function(req, res) {              // rutiranje na home page ako korisnik nije logovan
   if (req.session.email) {
     res.redirect("/home");
   } else {
@@ -41,15 +41,17 @@ app.get("/login", function(req, res) {
   }
 });
 
-app.get("/register", function(req, res) {
+app.get("/register", function(req, res) {           // rutiranje na register endpoint
   res.render("register");
 });
 
-app.get("/home",isLoggedIn, function(req, res) {
+app.get("/home",isLoggedIn, function(req, res) {    // ako je korisnik ulogovan, sa home page-a se redirektuje na search
   res.render("search");
 });
 
-app.get("/search",isLoggedIn, function(req, res) {
+// ako je korisnik logovan prikazuje se search endpoint gdje korisnik unosi podatke za let koji se zatim pretrazuju 
+
+app.get("/search",isLoggedIn, function(req, res) {  
   var r = (req.session.search = req.query);
   var from = r.from;
   var to = r.to;
@@ -73,24 +75,25 @@ app.get("/search",isLoggedIn, function(req, res) {
     ">=" +
     noofppl;
   connection.query(sql, function(err, result) {
-    if (err) {
+    if (err) {                                        // ako postoji greska sa bazom onda se konzologuje 
       console.log(err);
-    } else {
+    } else {                                          // u suprotnom se redirektuje na endpoint flights sa pretrazenim rezultatima
       req.session.message = result;
       res.redirect("/flights");
     }
   });
 });
 
-app.get("/flights",isLoggedIn, function(req, res) {
+app.get("/flights",isLoggedIn, function(req, res) {   // prikaz rezultata pretrazivanja
   var flights = req.session.message;
   res.render("results", { flights: flights });
 });
 
-app.get("/test", function(req, res) {
+app.get("/test", function(req, res) {                 // potvrda rezervacije
   res.render("confirmbooking");
 });
 
+// kada se izabere let sa odredjenim ID-em bira se broj putnika i podaci o njima i redirektuje se na endpoint passenger
 app.get("/book/:flight_id",isLoggedIn, function(req, res) {
   req.session.fid = req.params.flight_id;
   req.session.f = 1;
@@ -98,6 +101,7 @@ app.get("/book/:flight_id",isLoggedIn, function(req, res) {
   res.redirect("/passenger");
 });
 
+// ako nijesu uneseni podaci bar o jednom putniku, ponovo se redirektuje na endpoint passenger, u suprotnom ide se na endpoint confirmbooking
 app.get("/passenger",isLoggedIn, function(req, res) {
   var n = req.session.noofppl;
   var f = req.session.f;
@@ -108,11 +112,13 @@ app.get("/passenger",isLoggedIn, function(req, res) {
   }
 });
 
+// kada se podje na logout iz sesije se email postavlja na prazan string i korisnik se redirektuje na login page
 app.get("/logout", function(req, res) {
   req.session.email = "";
   res.redirect("/login");
 });
 
+// kada smo dosli GET metodom do endpoint confirmbooking insertujemo podatke pretrage u bazu podataka, kao i podatke o putnicima
 app.get("/confirmbooking",isLoggedIn, function(req, res) {
   var id;
   var search = req.session.search;
@@ -166,12 +172,14 @@ app.get("/confirmbooking",isLoggedIn, function(req, res) {
   });
 });
 
+// dodavanje jos jednog putnika
 app.post("/passenger",isLoggedIn, function(req, res) {
   req.session.f++;
   req.session.passengers.push(req.body);
   res.redirect("/passenger");
 });
 
+// login forma i proces logovanja 
 app.post("/login", function(req, res) {
   var body = req.body;
   var email = body.email;
@@ -197,6 +205,7 @@ app.post("/login", function(req, res) {
   });
 });
 
+// registracija korisnika i unosenje podataka u bazu
 app.post("/register", function(req, res) {
   var body = req.body;
   var email = body.email;
@@ -225,10 +234,12 @@ app.post("/register", function(req, res) {
   });
 });
 
+// konzollogovanje poruke Server has started at http://localhost:8080, kada se pokrene aplikacija na port 8080
 app.listen(8080, function() {
   console.log("Server has started at http://localhost:8080");
 });
 
+// funkcija za provjeru da li je korisnik logovan
 function isLoggedIn(req, res, next) {
   if (req.session.email) {
     return next();
